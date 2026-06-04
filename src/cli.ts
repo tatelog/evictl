@@ -379,8 +379,27 @@ export function normalizeHermesModelProvider(value: string): string {
   return HERMES_MODEL_PROVIDER_ALIASES[raw.toLowerCase()] ?? raw;
 }
 
+const MACOS_ONLY_COMMANDS = new Set(["launchctl", "plutil"]);
+
+function wrapCommandForPlatform(command: string[], configData?: Record<string, unknown>): string[] {
+  if (process.platform !== "win32") return command;
+  const cmd = command[0];
+  if (cmd === "tmux") {
+    const data = configData ?? loadConfigData();
+    const distro = typeof data.wsl_distro === "string" ? data.wsl_distro : "";
+    return distro
+      ? ["wsl", "-d", distro, "tmux", ...command.slice(1)]
+      : ["wsl", "tmux", ...command.slice(1)];
+  }
+  return command;
+}
+
 export function run(command: string[]): RunResult {
-  const result = spawnSync(command[0], command.slice(1), { encoding: "utf8" });
+  if (process.platform === "win32" && MACOS_ONLY_COMMANDS.has(command[0])) {
+    return { code: 1, stdout: "", stderr: `${command[0]}: not available on Windows` };
+  }
+  const wrapped = wrapCommandForPlatform(command);
+  const result = spawnSync(wrapped[0], wrapped.slice(1), { encoding: "utf8" });
   return {
     code: result.status ?? 1,
     stdout: result.stdout ?? "",

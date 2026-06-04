@@ -30,9 +30,6 @@
     "LICENSE",
     "SECURITY.md"
   ],
-  "os": [
-    "darwin"
-  ],
   "type": "module",
   "publishConfig": {
     "access": "public"
